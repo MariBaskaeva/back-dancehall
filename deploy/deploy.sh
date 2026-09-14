@@ -36,7 +36,18 @@ actual=$(sha256sum "$bundle/image.tar.gz" | awk '{print $1}')
 docker image load --input "$bundle/image.tar.gz"
 expected_id=$(cat "$bundle/image-id.txt")
 [[ "$expected_id" =~ ^sha256:[0-9a-f]{64}$ ]] || exit 2
-[[ $(docker image inspect --format '{{.Id}}' "$image") == "$expected_id" ]] || exit 1
+actual_id=$(docker image inspect --format '{{.Id}}' "$image")
+# With Docker's containerd image store, inspect can report the OCI manifest digest
+# after load instead of the config digest reported before save. Both are bound to
+# the verified archive, so accept either representation.
+archive_ids=$(tar -xOzf "$bundle/image.tar.gz" index.json \
+  | grep -oE '"digest":"sha256:[0-9a-f]{64}"' | cut -d'"' -f4)
+[[ -n "$archive_ids" ]] || exit 2
+if [[ "$actual_id" != "$expected_id" ]] \
+    && ! grep -Fxq "$actual_id" <<< "$archive_ids"; then
+  echo "Loaded image ID mismatch: expected $expected_id or an OCI archive digest, got $actual_id" >&2
+  exit 1
+fi
 [[ $(docker image inspect --format '{{index .Config.Labels "org.opencontainers.image.revision"}}' "$image") == "$revision" ]] || exit 1
 
 check_health() {
