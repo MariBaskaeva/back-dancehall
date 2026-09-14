@@ -1,0 +1,83 @@
+services:
+  backend:
+    image: ${BACKEND_IMAGE:-dancehall-backend:unreleased}
+    restart: unless-stopped
+    init: true
+    mem_limit: 1g
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop: [ALL]
+    security_opt: [no-new-privileges:true]
+    environment:
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60.0
+    networks: [web, database]
+    logging: &logging
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: '3'
+
+  postgres:
+    image: postgres:18.6-bookworm@sha256:1c59e2c3c818eaa0f0628f695b36e7c9e362d6b219b36a54a32df645cbd7e1af
+    restart: unless-stopped
+    mem_limit: 1g
+    shm_size: 128m
+    environment:
+      POSTGRES_DB: dancehall
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD_FILE: /run/secrets/postgres_password
+    secrets: [postgres_password, app_password]
+    volumes:
+      - pgdata:/var/lib/postgresql
+      - ./init-db.sh:/docker-entrypoint-initdb.d/10-dancehall.sh:ro
+    networks: [database]
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -U postgres -d dancehall']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+      start_period: 15s
+    logging: *logging
+
+  nginx:
+    image: nginx:stable-bookworm@sha256:552e7481ca93ffccd046aa658dbbed22caefbc09c66fa7cd247cbb90b8a5c609
+    restart: unless-stopped
+    mem_limit: 128m
+    read_only: true
+    tmpfs:
+      - /var/cache/nginx:size=32m
+      - /var/run:size=1m
+    ports:
+      - '80:80'
+      - '443:443'
+    volumes:
+      - ./nginx:/etc/nginx/conf.d:ro
+      - ./certificates:/etc/letsencrypt:ro
+      - ./acme:/var/www/certbot:ro
+    networks: [web]
+    logging: *logging
+
+  certbot:
+    image: certbot/certbot:v5.8.0@sha256:f70ad0adbb7e117f0fe42a63c553f28ea451edabc0148757b6efcd9735acaa20
+    profiles: [maintenance]
+    mem_limit: 256m
+    volumes:
+      - ./certificates:/etc/letsencrypt
+      - ./acme:/var/www/certbot
+    networks: [web]
+    logging: *logging
+
+networks:
+  web:
+  database:
+    internal: true
+
+volumes:
+  pgdata:
+
+secrets:
+  postgres_password:
+    file: ./secrets/postgres_password
+  app_password:
+    file: ./secrets/app_password

@@ -10,15 +10,14 @@ on:
 permissions:
   contents: read
 
-concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
-
 jobs:
   build-and-test:
     name: build-and-test
     runs-on: ubuntu-24.04
     timeout-minutes: 15
+    concurrency:
+      group: ci-${{ github.event.pull_request.number || github.ref }}
+      cancel-in-progress: true
     steps:
       - name: Check out source
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -35,6 +34,25 @@ jobs:
 
       - name: Check style, run tests and build JAR
         run: mvn --batch-mode --no-transfer-progress verify
+
+      - name: Build backend image
+        env:
+          IMAGE: dancehall-backend:${{ github.sha }}
+        run: docker build --build-arg VCS_REF="${{ github.sha }}" --tag "$IMAGE" .
+
+      - name: Test backend image
+        env:
+          IMAGE: dancehall-backend:${{ github.sha }}
+        run: deploy/test-image.sh "$IMAGE"
+
+      - name: Package backend image
+        env:
+          IMAGE: dancehall-backend:${{ github.sha }}
+        run: |
+          mkdir -p target/backend-image
+          docker image inspect --format '{{.Id}}' "$IMAGE" > target/backend-image/image-id.txt
+          docker image save "$IMAGE" | gzip -9 > target/backend-image/image.tar.gz
+          sha256sum target/backend-image/image.tar.gz > target/backend-image/image.tar.gz.sha256
 
       - name: Upload verification reports
         if: ${{ !cancelled() }}
@@ -54,3 +72,55 @@ jobs:
           path: target/back-dancehall-*.jar
           if-no-files-found: error
           retention-days: 7
+
+      - name: Upload backend image
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: backend-image-${{ github.sha }}
+          path: target/backend-image/
+          if-no-files-found: error
+          retention-days: 7
+
+  deploy-production:
+    name: deploy-production
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: build-and-test
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    environment:
+      name: production
+      url: https://87.242.119.237/api/ping
+    concurrency:
+      group: production
+      cancel-in-progress: false
+    steps:
+      - name: Download backend image
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          name: backend-image-${{ github.sha }}
+          path: backend-image
+
+      - name: Configure SSH
+        env:
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -m 0700 -d ~/.ssh
+          printf '%s\n' "$DEPLOY_SSH_KEY" > ~/.ssh/deploy_key
+          chmod 0600 ~/.ssh/deploy_key
+          printf '%s\n' "$DEPLOY_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          chmod 0600 ~/.ssh/known_hosts
+
+      - name: Transfer and deploy backend
+        env:
+          REVISION: ${{ github.sha }}
+        run: |
+          ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/deploy_key dancehall-deploy@87.242.119.237 \
+            "mkdir -p incoming/$REVISION"
+          scp -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/deploy_key backend-image/* \
+            "dancehall-deploy@87.242.119.237:incoming/$REVISION/"
+          ssh -o BatchMode=yes -o ConnectTimeout=15 -o StrictHostKeyChecking=yes \
+            -i ~/.ssh/deploy_key dancehall-deploy@87.242.119.237 \
+            "sudo /usr/local/sbin/dancehall-deploy $REVISION"
