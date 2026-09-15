@@ -31,6 +31,7 @@ chown dancehall-deploy:dancehall-deploy /home/dancehall-deploy/.ssh/authorized_k
 chmod 0600 /home/dancehall-deploy/.ssh/authorized_keys
 install -d -m 0755 "$stack" "$stack/nginx" "$stack/acme" "$stack/templates"
 install -d -m 0700 "$stack/secrets" "$stack/certificates" "$stack/backups"
+install -d -m 0755 "$stack/frontend" "$stack/frontend/releases"
 for file in compose.yaml init-db.sh; do install -m 0644 "$source_dir/$file" "$stack/$file"; done
 for file in nginx-http.conf nginx-https.conf; do install -m 0644 "$source_dir/$file" "$stack/templates/$file"; done
 for secret in postgres_password app_password; do
@@ -44,7 +45,11 @@ install -m 0755 "$source_dir/deploy.sh" /usr/local/sbin/dancehall-deploy
 install -m 0755 "$source_dir/backup.sh" /usr/local/sbin/dancehall-backup
 install -m 0755 "$source_dir/renew-certificate.sh" /usr/local/sbin/dancehall-renew-certificate
 install -m 0755 "$source_dir/restore-check.sh" /usr/local/sbin/dancehall-restore-check
-printf 'dancehall-deploy ALL=(root) NOPASSWD: /usr/local/sbin/dancehall-deploy\n' > /etc/sudoers.d/dancehall-deploy
+install -m 0755 "$source_dir/deploy-frontend.sh" /usr/local/sbin/dancehall-deploy-frontend
+printf '%s\n' \
+  'dancehall-deploy ALL=(root) NOPASSWD: /usr/local/sbin/dancehall-deploy' \
+  'dancehall-deploy ALL=(root) NOPASSWD: /usr/local/sbin/dancehall-deploy-frontend' \
+  > /etc/sudoers.d/dancehall-deploy
 chmod 0440 /etc/sudoers.d/dancehall-deploy
 visudo -cf /etc/sudoers.d/dancehall-deploy
 ufw allow 22/tcp

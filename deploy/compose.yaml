@@ -55,6 +55,7 @@ services:
       - ./nginx:/etc/nginx/conf.d:ro
       - ./certificates:/etc/letsencrypt:ro
       - ./acme:/var/www/certbot:ro
+      - ./frontend:/usr/share/nginx/html:ro
     networks: [web]
     logging: *logging
 
