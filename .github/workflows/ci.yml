@@ -24,6 +24,9 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Validate deployment scripts
+        run: bash -n deploy/*.sh
+
       - name: Set up Java 25
         uses: actions/setup-java@de7274f081f381c8f8158605e0321c36c376e2e6 # v6.0.1
         with:
@@ -45,7 +48,7 @@ jobs:
           IMAGE: dancehall-backend:${{ github.sha }}
         run: deploy/test-image.sh "$IMAGE"
 
-      - name: Test nginx API proxy
+      - name: Test nginx routing
         env:
           IMAGE: dancehall-backend:${{ github.sha }}
         run: deploy/test-nginx.sh "$IMAGE"

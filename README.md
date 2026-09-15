@@ -70,14 +70,24 @@ PR или ветки отменяется при новом коммите. Ли
 
 Production работает на одном VPS `87.242.119.237` через Docker Compose. nginx
 публикует порты 80 и 443, PostgreSQL и backend доступны только внутри Docker-сетей.
-Публичный endpoint: `https://87.242.119.237/api/ping`. Корень сайта пока отвечает
-`404` и зарезервирован для frontend.
+Frontend доступен по адресу `https://87.242.119.237/`, публичный backend endpoint —
+`https://87.242.119.237/api/ping`.
 
 После успешной проверки push в `main` задача `deploy-production` передаёт
 проверенный Docker-образ на VPS по SSH. Сервер проверяет SHA-256 архива и идентификатор
 образа, обновляет только backend и ожидает успешный внутренний healthcheck и внешний
 `/api/ping`. При ошибке автоматически возвращается предыдущий образ. Production-
 деплои выполняются последовательно и не прерываются новым push.
+
+Статические frontend-релизы хранятся в `/opt/dancehall/frontend/releases`; nginx
+читает активную версию через атомарно переключаемую ссылку `current`. Frontend CD
+проверяет checksum и SHA релиза, `/` и `/api/ping`, хранит предыдущую успешную
+версию и автоматически откатывается при ошибке. Общий lock последовательно
+выполняет backend- и frontend-деплои.
+
+На уже работающем VPS поддержку frontend нужно включить один раз из проверенного
+checkout командой `sudo deploy/enable-frontend.sh`. Скрипт обновляет только общую
+Compose/nginx-конфигурацию и устанавливает frontend deploy command.
 
 Первичная настройка сервера описана в `deploy/bootstrap.sh`. Она устанавливает
 Docker Engine и Compose, включает firewall для SSH/HTTP/HTTPS, создаёт отдельного
