@@ -45,6 +45,11 @@ jobs:
           IMAGE: dancehall-backend:${{ github.sha }}
         run: deploy/test-image.sh "$IMAGE"
 
+      - name: Test nginx API proxy
+        env:
+          IMAGE: dancehall-backend:${{ github.sha }}
+        run: deploy/test-nginx.sh "$IMAGE"
+
       - name: Package backend image
         env:
           IMAGE: dancehall-backend:${{ github.sha }}
