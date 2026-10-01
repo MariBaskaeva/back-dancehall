@@ -93,11 +93,11 @@ docker compose --project-name dancehall --file "$compose" \
 
 for ((attempt=0; attempt<30; attempt++)); do
   api_response=$(curl --fail --silent --show-error --max-time 5 \
-    --write-out '\n%{http_code}\n%{content_type}' \
-    https://87.242.119.237/api/ping 2>/dev/null || true)
+    --output /dev/null --write-out '%{http_code}\n%{content_type}' \
+    https://87.242.119.237/api/v1/authors 2>/dev/null || true)
   root_status=$(curl --silent --show-error --max-time 5 --output /dev/null \
     --write-out '%{http_code}' https://87.242.119.237/ 2>/dev/null || true)
-  if [[ "$api_response" == $'pong\n200\ntext/plain'* ]] \
+  if [[ "$api_response" == $'200\napplication/json'* ]] \
     && [[ "$root_status" == 200 || "$root_status" == 404 ]]; then
     changed=false
     trap - EXIT HUP INT TERM

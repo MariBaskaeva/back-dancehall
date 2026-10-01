@@ -1,0 +1,12 @@
+databaseChangeLog:
+  - include:
+      file: db/changelog/001-create-author-table.yaml
+
+  - include:
+      file: db/changelog/002-create-step-table.yaml
+
+  - include:
+      file: db/changelog/003-insert-authors.sql
+
+  - include:
+      file: db/changelog/004-insert-steps.sql

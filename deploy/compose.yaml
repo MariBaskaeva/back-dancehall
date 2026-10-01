@@ -11,6 +11,15 @@ services:
     security_opt: [no-new-privileges:true]
     environment:
       JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=60.0
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/dancehall
+      SPRING_DATASOURCE_USERNAME: dancehall
+      SPRING_CONFIG_IMPORT: configtree:/run/secrets/
+    secrets:
+      - source: app_password
+        target: spring.datasource.password
+    depends_on:
+      postgres:
+        condition: service_healthy
     networks: [web, database]
     logging: &logging
       driver: json-file
