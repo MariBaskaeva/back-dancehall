@@ -1,0 +1,15 @@
+services:
+  postgres:
+    image: postgres:17
+    container_name: dancehall-postgres
+    environment:
+      POSTGRES_DB: dancehall
+      POSTGRES_USER: dancehall
+      POSTGRES_PASSWORD: dancehall
+    ports:
+      - "5433:5432"
+    volumes:
+      - dancehall-postgres-data:/var/lib/postgresql/data
+
+volumes:
+  dancehall-postgres-data:
