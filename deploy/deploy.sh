@@ -4,7 +4,7 @@ set -Eeuo pipefail
 STACK_DIR=/opt/dancehall
 INCOMING_DIR=/home/dancehall-deploy/incoming
 PROJECT_NAME=dancehall
-HEALTH_URL=https://87.242.119.237/api/ping
+HEALTH_URL=https://87.242.119.237/api/v1/authors
 HEALTH_TIMEOUT=120
 
 revision=${1:-}
@@ -57,8 +57,8 @@ check_health() {
     status=$(docker inspect --format '{{if .State.Health}}{{.State.Health.Status}}{{end}}' "$container_id" 2>/dev/null || true)
     if [[ "$status" == healthy ]]; then
       response=$(curl --fail --silent --show-error --max-time 5 \
-        --write-out '\n%{http_code}\n%{content_type}' "$HEALTH_URL" 2>/dev/null || true)
-      if [[ "$response" == $'pong\n200\ntext/plain'* ]]; then return 0; fi
+        --output /dev/null --write-out '%{http_code}\n%{content_type}' "$HEALTH_URL" 2>/dev/null || true)
+      if [[ "$response" == $'200\napplication/json'* ]]; then return 0; fi
     fi
     sleep 2
   done

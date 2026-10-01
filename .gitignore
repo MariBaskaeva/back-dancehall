@@ -5,3 +5,5 @@
 /.project
 /.settings/
 /.vscode/
+/.env
+/.env.*

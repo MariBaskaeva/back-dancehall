@@ -97,7 +97,7 @@ jobs:
     timeout-minutes: 15
     environment:
       name: production
-      url: https://87.242.119.237/api/ping
+      url: https://87.242.119.237/api/v1/authors
     concurrency:
       group: production
       cancel-in-progress: false

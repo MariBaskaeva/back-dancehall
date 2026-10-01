@@ -11,5 +11,5 @@ LABEL org.opencontainers.image.source="https://github.com/MariBaskaeva/back-danc
 USER 10001:10001
 EXPOSE 8080
 HEALTHCHECK --interval=5s --timeout=3s --start-period=20s --retries=12 \
-    CMD curl --fail --silent http://127.0.0.1:8080/ping | grep -qx pong
+    CMD curl --fail --silent --output /dev/null http://127.0.0.1:8080/api/v1/authors
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]

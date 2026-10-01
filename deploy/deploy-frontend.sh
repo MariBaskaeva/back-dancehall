@@ -13,7 +13,7 @@ RELEASES_DIR=$FRONTEND_DIR/releases
 INCOMING_DIR=/home/dancehall-deploy/incoming/frontend
 REPOSITORY_URL=https://github.com/MariBaskaeva/front-dancehall.git
 HEALTH_URL=https://87.242.119.237/
-API_HEALTH_URL=https://87.242.119.237/api/ping
+API_HEALTH_URL=https://87.242.119.237/api/v1/authors
 HEALTH_TIMEOUT=60
 
 revision=${1:-}
@@ -100,11 +100,11 @@ check_health() {
       --output "$html_file" --write-out '%{http_code}\n%{content_type}' "$HEALTH_URL" \
       2>/dev/null || true)
     api_response=$(curl --fail --silent --show-error --max-time 5 \
-      --write-out '\n%{http_code}\n%{content_type}' "$API_HEALTH_URL" \
+      --output /dev/null --write-out '%{http_code}\n%{content_type}' "$API_HEALTH_URL" \
       2>/dev/null || true)
     if [[ "$response" == $'200\ntext/html'* ]] \
       && grep -Fq "name=\"dancehall-revision\" content=\"$expected_revision\"" "$html_file" \
-      && [[ "$api_response" == $'pong\n200\ntext/plain'* ]]; then
+      && [[ "$api_response" == $'200\napplication/json'* ]]; then
       rm -f "$html_file"
       return 0
     fi
